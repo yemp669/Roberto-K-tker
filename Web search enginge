@@ -1,0 +1,110 @@
+def union(p,q):
+  for e in q:
+    if e not in p:
+      p.append(e)
+
+def cleanpage(page):
+  code = page
+  check1, check2 = 0,0
+  for bucket in code:
+    if bucket in ["<","{"] or code[code.index(bucket):code.index(bucket)+2] == "/*":
+      check1 = code.index(bucket)
+    if bucket in [">","}"] or code[code.index(bucket):code.index(bucket)+2] == "*/":
+      check2 = code.index(bucket)
+      code = code[:check1] + code[check2+1:]
+      check1, check2= 0, 0
+    if bucket in [".",":"] and check1 == 0 and check2 == 0:
+      code = code[:code.index(bucket)]+code[code.index(bucket)+1:]
+  return code
+
+def getPage (url):
+  try:
+    import urllib.request
+    page = urllib.request.urlopen(url).read()
+    return page . decode ( " utf −8 " )
+  except:
+    return ""
+
+def get_next_target(page):
+  start_link = page.find("<a href=")
+  if start_link == -1:
+    return None,0
+  start_quote = page.find ('"', start_link)
+  end_quote = page.find ('"',start_quote +1)
+  url = page [start_quote +1: end_quote]
+  return url , end_quote
+
+def get_all_links(page):
+  links = []
+  while True:
+    url , endpos = get_next_target (page)
+    if url:
+      links.append(url)
+      page = page [endpos:]
+    else:
+      break
+  return links
+
+def addToIndex(index,keyword,url):
+  if keyword in index:
+    index[keyword].append(url)
+  else:
+    index[keyword] = [url]
+
+def lookup(index, keyword, graph=None , computing_procedure=None):
+  if graph == None and computing_procedure != None or graph != None and computing_procedure== None:
+    print("This procedure takes 4 outputs these are:\n        1-An index\n        2-A key\n        3-A grap\n        4-A computing procedure\n                respectively.\nYou habe 2 option to use ths lookup procedure: with or without keyword.\n       -If you intented to use it without oage rank be sure you have given only two inputs, index and key, respectively.\n       -If you intented to use it with page rank be sure you habe given all four input in the given order.\nINVALID INPUT COMBINATION: Please heck the inputs. ")
+    return
+  elif graph == None and computing_procedure == None:
+    for entry in index:
+      if entry == keyword:
+        return index[keyword]
+  else:
+    keypageswithrangs, rangdedgraph, results = {}, computing_procedure(graph), []
+    for pagewithrang in graph:
+      if pagewithrang in index[keyword]:
+        keypageswithrangs[pagewithrang] = rangdedgraph[pagewithrang]
+    keypageswithrangs = sorted(keypageswithrangs.items(), key= lambda x: x[1], reverse = True)
+    for element in keypageswithrangs:
+      results.append(element[0])
+    return results
+
+def addPageToIndex(index,url,content):
+  content = cleanpage(content)
+  words = content.split()
+  for word in words:
+    addToIndex(index,word,url)
+
+def computeRanks (graph):
+  d = 0.8
+  N = len(graph)
+  numloops = 10
+  ranks = {}
+  for page in graph :
+    ranks[page] = 1/N
+  for i in range (0,numloops):
+    newranks = {}
+    for page in graph :
+      newrank = (1-d)/N
+      for node in graph :
+        if page in graph[node]:
+          newrank = newrank + d*(ranks[node]/len(graph(node)))
+      newranks[page] = newrank
+    ranks = newranks
+  newranks
+
+def crawl_web(seed):
+  tocrawl = [seed]
+  crawled = []
+  index={}
+  graph = {}
+  while tocrawl:
+    pageurl = tocrawl.pop()
+    if pageurl not in crawled:
+      content=getPage(pageurl)
+      addPageToIndex(index, pageurl,content)
+      outlinks = get_all_links(content)
+      graph[pageurl] = outlinks
+      union(tocrawl, get_all_links(content))
+      crawled.append(pageurl)
+  return index, graph
